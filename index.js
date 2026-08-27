@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
 const { ServerApiVersion } = require("mongodb");
+const { ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const app = express();
@@ -60,6 +61,54 @@ async function run() {
         res.status(500).send({
           success: false,
           message: "Failed to fetch properties",
+          error: error.message,
+        });
+      }
+    });
+
+    app.delete("/api/property", async (req, res) => {
+      try {
+        const { id } = req.body;
+
+        console.log("Property ID:", id);
+
+        if (!id) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({
+            success: false,
+            message: "Invalid property ID",
+          });
+        }
+
+        const result = await propertyCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        console.log("Delete result:", result);
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "Property not found",
+          });
+        }
+
+        return res.status(200).send({
+          success: true,
+          message: "Property deleted successfully",
+        });
+      } catch (error) {
+        console.error("DELETE PROPERTY ERROR:", error);
+
+        return res.status(500).send({
+          success: false,
+          message: "Failed to delete property",
           error: error.message,
         });
       }
