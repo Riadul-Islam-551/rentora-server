@@ -38,22 +38,66 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/api/property", async (req, res) => {
+    //   try {
+    //     const { owner } = req.query;
+    //     const query = {};
+
+    //     console.log(req.query.owner);
+
+    //     if (owner) {
+    //       query.ownerId = owner;
+    //     }
+
+    //     const properties = await propertyCollection.find(query).toArray();
+
+    //     res.status(200).send({
+    //       success: true,
+    //       data: properties,
+    //     });
+    //   } catch (error) {
+    //     console.error("Error fetching properties:", error);
+
+    //     res.status(500).send({
+    //       success: false,
+    //       message: "Failed to fetch properties",
+    //       error: error.message,
+    //     });
+    //   }
+    // });
+
     app.get("/api/property", async (req, res) => {
       try {
-        const { owner } = req.query;
-        const query = {};
+        const { owner, page = 1 } = req.query;
 
-        console.log(req.query.owner);
+        const pageSize = 10;
+        const currentPage = Math.max(1, Number(page));
+        const skip = (currentPage - 1) * pageSize;
+
+        const query = {};
 
         if (owner) {
           query.ownerId = owner;
         }
 
-        const properties = await propertyCollection.find(query).toArray();
+        const properties = await propertyCollection
+          .find(query)
+          .sort({ _id: -1 })
+          .skip(skip)
+          .limit(pageSize)
+          .toArray();
+
+        const totalProperties = await propertyCollection.countDocuments(query);
 
         res.status(200).send({
           success: true,
           data: properties,
+          pagination: {
+            currentPage,
+            pageSize,
+            totalProperties,
+            totalPages: Math.ceil(totalProperties / pageSize),
+          },
         });
       } catch (error) {
         console.error("Error fetching properties:", error);
