@@ -38,35 +38,7 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/api/property", async (req, res) => {
-    //   try {
-    //     const { owner } = req.query;
-    //     const query = {};
-
-    //     console.log(req.query.owner);
-
-    //     if (owner) {
-    //       query.ownerId = owner;
-    //     }
-
-    //     const properties = await propertyCollection.find(query).toArray();
-
-    //     res.status(200).send({
-    //       success: true,
-    //       data: properties,
-    //     });
-    //   } catch (error) {
-    //     console.error("Error fetching properties:", error);
-
-    //     res.status(500).send({
-    //       success: false,
-    //       message: "Failed to fetch properties",
-    //       error: error.message,
-    //     });
-    //   }
-    // });
-
-    app.get("/api/property", async (req, res) => {
+    app.get("/api/owner/property", async (req, res) => {
       try {
         const { owner, page = 1 } = req.query;
 
@@ -110,7 +82,7 @@ async function run() {
       }
     });
 
-    app.patch("/api/property", async (req, res) => {
+    app.patch("/api/update/property", async (req, res) => {
       try {
         const { id, ...updateProperty } = req.body;
 
@@ -172,7 +144,7 @@ async function run() {
       }
     });
 
-    app.delete("/api/property", async (req, res) => {
+    app.delete("/api/delete/property", async (req, res) => {
       try {
         const { id } = req.body;
 
