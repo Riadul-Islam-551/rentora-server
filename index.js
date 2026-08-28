@@ -66,6 +66,68 @@ async function run() {
       }
     });
 
+    app.patch("/api/property", async (req, res) => {
+      try {
+        const { id, ...updateProperty } = req.body;
+
+        console.log("PATCH property:", {
+          id,
+          updateProperty,
+        });
+
+        if (!id) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({
+            success: false,
+            message: "Invalid property ID",
+          });
+        }
+
+        if (Object.keys(updateProperty).length === 0) {
+          return res.status(400).send({
+            success: false,
+            message: "No property data provided for update",
+          });
+        }
+
+        const result = await propertyCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          {
+            $set: updateProperty,
+          },
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "Property not found",
+          });
+        }
+
+        return res.status(200).send({
+          success: true,
+          message: "Property updated successfully",
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("PATCH PROPERTY ERROR:", error);
+
+        return res.status(500).send({
+          success: false,
+          message: "Failed to update property",
+          error: error.message,
+        });
+      }
+    });
+
     app.delete("/api/property", async (req, res) => {
       try {
         const { id } = req.body;
