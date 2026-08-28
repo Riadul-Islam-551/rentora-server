@@ -192,6 +192,44 @@ async function run() {
       }
     });
 
+    app.get("/api/property", async (req, res) => {
+      try {
+        const { page = 1 } = req.query;
+
+        const pageSize = 10;
+        const currentPage = Math.max(1, Number(page));
+        const skip = (currentPage - 1) * pageSize;
+
+        const properties = await propertyCollection
+          .find()
+          .sort({ _id: -1 })
+          .skip(skip)
+          .limit(pageSize)
+          .toArray();
+
+        const totalProperties = await propertyCollection.countDocuments();
+
+        res.status(200).send({
+          success: true,
+          data: properties,
+          pagination: {
+            currentPage,
+            pageSize,
+            totalProperties,
+            totalPages: Math.ceil(totalProperties / pageSize),
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching properties:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch properties",
+          error: error.message,
+        });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(
