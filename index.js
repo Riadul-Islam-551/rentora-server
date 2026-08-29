@@ -26,6 +26,7 @@ async function run() {
     const db = client.db("rentora");
     const propertyCollection = db.collection("property");
     const propertyRejectCollection = db.collection("rejection");
+    const userCollection = db.collection("user");
 
     app.post("/api/property", async (req, res) => {
       const data = req.body;
@@ -306,6 +307,88 @@ async function run() {
           success: false,
           message: "Failed to fetch rejection data",
           error: error?.message,
+        });
+      }
+    });
+
+    // Get all users
+    app.get("/api/users", async (req, res) => {
+      try {
+        const users = await userCollection.find().toArray();
+
+        res.status(200).send({
+          success: true,
+          data: users,
+        });
+      } catch (error) {
+        console.error("Error fetching users:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch users",
+          error: error?.message,
+        });
+      }
+    });
+
+    app.patch("/api/update/user", async (req, res) => {
+      try {
+        const { id, ...updateUser } = req.body;
+
+        console.log("PATCH property:", {
+          id,
+          updateUser,
+        });
+
+        if (!id) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({
+            success: false,
+            message: "Invalid property ID",
+          });
+        }
+
+        if (Object.keys(updateProperty).length === 0) {
+          return res.status(400).send({
+            success: false,
+            message: "No property data provided for update",
+          });
+        }
+
+        const result = await userCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          {
+            $set: updateUser,
+          },
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "Property not found",
+          });
+        }
+
+        return res.status(200).send({
+          success: true,
+          message: "User updated successfully",
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("PATCH USER ERROR:", error);
+
+        return res.status(500).send({
+          success: false,
+          message: "Failed to update User",
+          error: error.message,
         });
       }
     });
