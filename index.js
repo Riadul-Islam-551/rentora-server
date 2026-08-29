@@ -39,46 +39,6 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/api/reject/property", async (req, res) => {
-      try {
-        const data = req.body;
-
-        if (!data?.propertyId) {
-          return res.status(400).send({
-            success: false,
-            message: "Property ID is required",
-          });
-        }
-
-        if (!data?.message?.trim()) {
-          return res.status(400).send({
-            success: false,
-            message: "Rejection message is required",
-          });
-        }
-
-        const rejection = {
-          ...data,
-          createdAt: new Date(),
-        };
-
-        const result = await propertyRejectCollection.insertOne(rejection);
-
-        res.send({
-          success: true,
-          message: "Property rejection created successfully",
-          data: result,
-        });
-      } catch (error) {
-        console.error("Reject property error:", error);
-
-        res.status(500).send({
-          success: false,
-          message: "Failed to create property rejection",
-        });
-      }
-    });
-
     app.get("/api/owner/property", async (req, res) => {
       try {
         const { owner, page = 1 } = req.query;
@@ -267,6 +227,85 @@ async function run() {
           success: false,
           message: "Failed to fetch properties",
           error: error.message,
+        });
+      }
+    });
+
+    // rejection apis
+    app.post("/api/reject/property", async (req, res) => {
+      try {
+        const data = req.body;
+
+        if (!data?.propertyId) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!data?.message?.trim()) {
+          return res.status(400).send({
+            success: false,
+            message: "Rejection message is required",
+          });
+        }
+
+        const rejection = {
+          ...data,
+          createdAt: new Date(),
+        };
+
+        const result = await propertyRejectCollection.insertOne(rejection);
+
+        res.send({
+          success: true,
+          message: "Property rejection created successfully",
+          data: result,
+        });
+      } catch (error) {
+        console.error("Reject property error:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to create property rejection",
+        });
+      }
+    });
+
+    app.get("/api/reject/property", async (req, res) => {
+      try {
+        const { propertyId } = req.query;
+
+        if (!propertyId) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        const rejection = await propertyRejectCollection.findOne({
+          propertyId,
+        });
+
+        if (!rejection) {
+          return res.status(404).send({
+            success: false,
+            message: "Rejection data not found",
+            data: null,
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          data: rejection,
+        });
+      } catch (error) {
+        console.log("Error fetching rejection:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch rejection data",
+          error: error?.message,
         });
       }
     });
