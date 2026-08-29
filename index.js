@@ -196,21 +196,92 @@ async function run() {
 
     app.get("/api/property", async (req, res) => {
       try {
-        const { page = 1 } = req.query;
+        const {
+          page = 1,
+          search = "",
+          propertyType = "",
+          sortPrice = "",
+        } = req.query;
 
         const pageSize = 10;
-        const currentPage = Math.max(1, Number(page));
+
+        // -----------------------------
+        // Pagination
+        // -----------------------------
+        const currentPage = Math.max(1, Number(page) || 1);
+
         const skip = (currentPage - 1) * pageSize;
 
+        // -----------------------------
+        // Build MongoDB filter
+        // -----------------------------
+        const filter = {};
+
+        // Search by title OR location
+        if (search.trim()) {
+          filter.$or = [
+            {
+              title: {
+                $regex: search.trim(),
+                $options: "i",
+              },
+            },
+            {
+              location: {
+                $regex: search.trim(),
+                $options: "i",
+              },
+            },
+          ];
+        }
+
+        // Filter by property type
+        if (propertyType.trim()) {
+          filter.propertyType = {
+            $regex: `^${propertyType.trim()}$`,
+            $options: "i",
+          };
+        }
+
+        // -----------------------------
+        // Sorting
+        // -----------------------------
+        let sort = {
+          _id: -1,
+        };
+
+        if (sortPrice === "asc") {
+          sort = {
+            rent: 1,
+          };
+        }
+
+        if (sortPrice === "desc") {
+          sort = {
+            rent: -1,
+          };
+        }
+
+        // -----------------------------
+        // Get properties
+        // -----------------------------
         const properties = await propertyCollection
-          .find()
-          .sort({ _id: -1 })
+          .find(filter)
+          .sort(sort)
           .skip(skip)
           .limit(pageSize)
           .toArray();
 
-        const totalProperties = await propertyCollection.countDocuments();
+        // -----------------------------
+        // Count filtered properties
+        // -----------------------------
+        const totalProperties = await propertyCollection.countDocuments(filter);
 
+        const totalPages = Math.ceil(totalProperties / pageSize);
+
+        // -----------------------------
+        // Response
+        // -----------------------------
         res.status(200).send({
           success: true,
           data: properties,
@@ -218,7 +289,12 @@ async function run() {
             currentPage,
             pageSize,
             totalProperties,
-            totalPages: Math.ceil(totalProperties / pageSize),
+            totalPages,
+          },
+          filters: {
+            search,
+            propertyType,
+            sortPrice,
           },
         });
       } catch (error) {
@@ -231,6 +307,44 @@ async function run() {
         });
       }
     });
+
+    // app.get("/api/property", async (req, res) => {
+    //   try {
+    //     const { page = 1 } = req.query;
+
+    //     const pageSize = 10;
+    //     const currentPage = Math.max(1, Number(page));
+    //     const skip = (currentPage - 1) * pageSize;
+
+    //     const properties = await propertyCollection
+    //       .find()
+    //       .sort({ _id: -1 })
+    //       .skip(skip)
+    //       .limit(pageSize)
+    //       .toArray();
+
+    //     const totalProperties = await propertyCollection.countDocuments();
+
+    //     res.status(200).send({
+    //       success: true,
+    //       data: properties,
+    //       pagination: {
+    //         currentPage,
+    //         pageSize,
+    //         totalProperties,
+    //         totalPages: Math.ceil(totalProperties / pageSize),
+    //       },
+    //     });
+    //   } catch (error) {
+    //     console.error("Error fetching properties:", error);
+
+    //     res.status(500).send({
+    //       success: false,
+    //       message: "Failed to fetch properties",
+    //       error: error.message,
+    //     });
+    //   }
+    // });
 
     // rejection apis
     app.post("/api/reject/property", async (req, res) => {
