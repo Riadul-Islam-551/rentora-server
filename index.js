@@ -25,6 +25,7 @@ async function run() {
 
     const db = client.db("rentora");
     const propertyCollection = db.collection("property");
+    const propertyRejectCollection = db.collection("rejection");
 
     app.post("/api/property", async (req, res) => {
       const data = req.body;
@@ -36,6 +37,46 @@ async function run() {
       const result = await propertyCollection.insertOne(newProperty);
 
       res.send(result);
+    });
+
+    app.post("/api/reject/property", async (req, res) => {
+      try {
+        const data = req.body;
+
+        if (!data?.propertyId) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!data?.message?.trim()) {
+          return res.status(400).send({
+            success: false,
+            message: "Rejection message is required",
+          });
+        }
+
+        const rejection = {
+          ...data,
+          createdAt: new Date(),
+        };
+
+        const result = await propertyRejectCollection.insertOne(rejection);
+
+        res.send({
+          success: true,
+          message: "Property rejection created successfully",
+          data: result,
+        });
+      } catch (error) {
+        console.error("Reject property error:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to create property rejection",
+        });
+      }
     });
 
     app.get("/api/owner/property", async (req, res) => {
