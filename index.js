@@ -335,30 +335,47 @@ async function run() {
       try {
         const { id, ...updateUser } = req.body;
 
-        console.log("PATCH property:", {
+        console.log("PATCH user:", {
           id,
           updateUser,
         });
 
+        // Check ID
         if (!id) {
           return res.status(400).send({
             success: false,
-            message: "Property ID is required",
+            message: "User ID is required",
           });
         }
 
+        // Validate MongoDB ObjectId
         if (!ObjectId.isValid(id)) {
           return res.status(400).send({
             success: false,
-            message: "Invalid property ID",
+            message: "Invalid user ID",
           });
         }
 
-        if (Object.keys(updateProperty).length === 0) {
+        // Check update data
+        if (Object.keys(updateUser).length === 0) {
           return res.status(400).send({
             success: false,
-            message: "No property data provided for update",
+            message: "No user data provided for update",
           });
+        }
+
+        // Optional: validate role
+        if (updateUser.role) {
+          const allowedRoles = ["admin", "owner", "tenant"];
+
+          if (!allowedRoles.includes(updateUser.role.toLowerCase())) {
+            return res.status(400).send({
+              success: false,
+              message: "Invalid user role",
+            });
+          }
+
+          updateUser.role = updateUser.role.toLowerCase();
         }
 
         const result = await userCollection.updateOne(
@@ -370,10 +387,11 @@ async function run() {
           },
         );
 
+        // User doesn't exist
         if (result.matchedCount === 0) {
           return res.status(404).send({
             success: false,
-            message: "Property not found",
+            message: "User not found",
           });
         }
 
@@ -387,7 +405,7 @@ async function run() {
 
         return res.status(500).send({
           success: false,
-          message: "Failed to update User",
+          message: "Failed to update user",
           error: error.message,
         });
       }
