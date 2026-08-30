@@ -836,6 +836,44 @@ async function run() {
       }
     });
 
+    app.get("/api/user/:userId", async (req, res) => {
+      try {
+        const { userId } = req.params;
+        console.log("user id", userId);
+        if (!userId) {
+          return res.status(400).send({
+            success: false,
+            message: "user ID is required",
+          });
+        }
+
+        // Find tenant by MongoDB _id
+        const user = await userCollection.findOne({
+          _id: new ObjectId(userId),
+        });
+
+        if (!user) {
+          return res.status(404).send({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          data: user,
+        });
+      } catch (error) {
+        console.error("Error fetching user:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch user details",
+          error: error.message,
+        });
+      }
+    });
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
