@@ -28,6 +28,7 @@ async function run() {
     const propertyRejectCollection = db.collection("rejection");
     const userCollection = db.collection("user");
     const favoriteCollection = db.collection("favorite");
+    const reviewCollection = db.collection("review");
 
     app.post("/api/property", async (req, res) => {
       const data = req.body;
@@ -671,8 +672,170 @@ async function run() {
       }
     });
 
+    app.post("/api/reviews", async (req, res) => {
+      try {
+        const { propertyId, tenantId, rating, feedback } = req.body;
+
+        // Validation----------
+
+        if (!propertyId) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!tenantId) {
+          return res.status(400).send({
+            success: false,
+            message: "Tenant ID is required",
+          });
+        }
+
+        if (!rating) {
+          return res.status(400).send({
+            success: false,
+            message: "Rating is required",
+          });
+        }
+
+        if (!feedback || !feedback.trim()) {
+          return res.status(400).send({
+            success: false,
+            message: "Feedback is required",
+          });
+        }
+
+        // --Validate rating-----------------------------
+
+        const ratingNumber = Number(rating);
+
+        if (
+          !Number.isInteger(ratingNumber) ||
+          ratingNumber < 1 ||
+          ratingNumber > 5
+        ) {
+          return res.status(400).send({
+            success: false,
+            message: "Rating must be a number between 1 and 5",
+          });
+        }
+
+        // ---Check whether property exists--------
+
+        const property = await propertyCollection.findOne({
+          _id: new ObjectId(propertyId),
+        });
+
+        if (!property) {
+          return res.status(404).send({
+            success: false,
+            message: "Property not found",
+          });
+        }
+
+        // ------Prevent duplicate review------
+
+        const existingReview = await reviewCollection.findOne({
+          propertyId,
+          tenantId,
+        });
+
+        if (existingReview) {
+          return res.status(409).send({
+            success: false,
+            message: "You have already reviewed this property",
+          });
+        }
+
+        // ------------Create review------------
+
+        const review = {
+          propertyId,
+          tenantId,
+          rating: ratingNumber,
+          feedback: feedback.trim(),
+          createdAt: new Date(),
+        };
+
+        const result = await reviewCollection.insertOne(review);
+
+        res.status(201).send({
+          success: true,
+          message: "Review submitted successfully",
+          data: {
+            _id: result.insertedId,
+            ...review,
+          },
+        });
+      } catch (error) {
+        console.error("Error creating review:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to submit review",
+          error: error.message,
+        });
+      }
+    });
+
+    // app.get("/api/reviews", async (req, res) => {
+    //   try {
+    //     const { propertyId } = req.query;
+    //     if (!propertyId) {
+    //       return res
+    //         .status(400)
+    //         .send({ success: false, message: "Property ID is required" });
+    //     }
+    //     const reviews = await reviewCollection
+    //       .find({ propertyId })
+    //       .sort({ createdAt: -1 })
+    //       .toArray();
+    //     res
+    //       .status(200)
+    //       .send({ success: true, data: reviews, totalReviews: reviews.length });
+    //   } catch (error) {
+    //     console.error("Error fetching reviews:", error);
+    //     res
+    //       .status(500)
+    //       .send({
+    //         success: false,
+    //         message: "Failed to fetch reviews",
+    //         error: error.message,
+    //       });
+    //   }
+    // });
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
+
+    app.get("/api/reviews/top", async (req, res) => {
+      try {
+        const reviews = await reviewCollection
+          .find({})
+          .sort({
+            rating: -1,
+            createdAt: -1,
+          })
+          .limit(4)
+          .toArray();
+
+        res.status(200).send({
+          success: true,
+          data: reviews,
+          totalReviews: reviews.length,
+        });
+      } catch (error) {
+        console.error("Error fetching top reviews:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch top reviews",
+          error: error.message,
+        });
+      }
+    });
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
