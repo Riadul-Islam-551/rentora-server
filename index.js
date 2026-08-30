@@ -92,7 +92,7 @@ async function run() {
         });
       }
     });
-    
+
     app.patch("/api/update/property", async (req, res) => {
       try {
         const { id, ...updateProperty } = req.body;
@@ -476,6 +476,43 @@ async function run() {
         return res.status(500).send({
           success: false,
           message: "Failed to update user",
+          error: error.message,
+        });
+      }
+    });
+
+    app.get("/api/property/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!id) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        const property = await propertyCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!property) {
+          return res.status(404).send({
+            success: false,
+            message: "Property not found",
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          data: property,
+        });
+      } catch (error) {
+        console.error("Error fetching property:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch property",
           error: error.message,
         });
       }
