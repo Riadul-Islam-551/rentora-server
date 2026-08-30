@@ -205,66 +205,61 @@ async function run() {
 
         const pageSize = 10;
 
-        // -----------------------------
-        // Pagination
-        // -----------------------------
         const currentPage = Math.max(1, Number(page) || 1);
-
         const skip = (currentPage - 1) * pageSize;
 
-        // -----------------------------
-        // Build MongoDB filter
-        // -----------------------------
         const filter = {};
 
-        // Search by title OR location
-        if (search.trim()) {
+        const trimmedSearch = String(search).trim();
+        const trimmedPropertyType = String(propertyType).trim();
+
+        // Search title OR location
+        if (trimmedSearch) {
+          const escapedSearch = trimmedSearch.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&",
+          );
+
           filter.$or = [
             {
               title: {
-                $regex: search.trim(),
+                $regex: escapedSearch,
                 $options: "i",
               },
             },
             {
               location: {
-                $regex: search.trim(),
+                $regex: escapedSearch,
                 $options: "i",
               },
             },
           ];
         }
 
-        // Filter by property type
-        if (propertyType.trim()) {
+        // Property type
+        if (trimmedPropertyType) {
+          const escapedPropertyType = trimmedPropertyType.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&",
+          );
+
           filter.propertyType = {
-            $regex: `^${propertyType.trim()}$`,
+            $regex: `^${escapedPropertyType}$`,
             $options: "i",
           };
         }
 
-        // -----------------------------
         // Sorting
-        // -----------------------------
-        let sort = {
-          _id: -1,
-        };
+        let sort = { _id: -1 };
 
         if (sortPrice === "asc") {
-          sort = {
-            rent: 1,
-          };
+          sort = { rent: 1, _id: -1 };
         }
 
         if (sortPrice === "desc") {
-          sort = {
-            rent: -1,
-          };
+          sort = { rent: -1, _id: -1 };
         }
 
-        // -----------------------------
-        // Get properties
-        // -----------------------------
         const properties = await propertyCollection
           .find(filter)
           .sort(sort)
@@ -272,16 +267,10 @@ async function run() {
           .limit(pageSize)
           .toArray();
 
-        // -----------------------------
-        // Count filtered properties
-        // -----------------------------
         const totalProperties = await propertyCollection.countDocuments(filter);
 
         const totalPages = Math.ceil(totalProperties / pageSize);
 
-        // -----------------------------
-        // Response
-        // -----------------------------
         res.status(200).send({
           success: true,
           data: properties,
@@ -292,8 +281,8 @@ async function run() {
             totalPages,
           },
           filters: {
-            search,
-            propertyType,
+            search: trimmedSearch,
+            propertyType: trimmedPropertyType,
             sortPrice,
           },
         });
