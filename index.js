@@ -27,6 +27,7 @@ async function run() {
     const propertyCollection = db.collection("property");
     const propertyRejectCollection = db.collection("rejection");
     const userCollection = db.collection("user");
+    const favoriteCollection = db.collection("favorite");
 
     app.post("/api/property", async (req, res) => {
       const data = req.body;
@@ -513,6 +514,64 @@ async function run() {
         res.status(500).send({
           success: false,
           message: "Failed to fetch property",
+          error: error.message,
+        });
+      }
+    });
+
+    app.post("/api/favorite", async (req, res) => {
+      try {
+        const { propertyId, tenantId } = req.body;
+        console.log("information", propertyId, tenantId);
+
+        if (!propertyId) {
+          return res.status(400).send({
+            success: false,
+            message: "Property ID is required",
+          });
+        }
+
+        if (!tenantId) {
+          return res.status(400).send({
+            success: false,
+            message: "Tenant ID is required",
+          });
+        }
+
+        // Prevent duplicate favorite
+        const existingFavorite = await favoriteCollection.findOne({
+          propertyId,
+          tenantId,
+        });
+
+        if (existingFavorite) {
+          return res.status(409).send({
+            success: false,
+            message: "Property is already in favorites",
+            data: existingFavorite,
+          });
+        }
+
+        const favorite = {
+          propertyId,
+          tenantId,
+          createdAt: new Date(),
+        };
+
+        const result = await favoriteCollection.insertOne(favorite);
+        console.log("result", result);
+
+        res.status(201).send({
+          success: true,
+          message: "Property added to favorites",
+          data: result,
+        });
+      } catch (error) {
+        console.error("Error adding favorite:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to add property to favorites",
           error: error.message,
         });
       }
