@@ -632,6 +632,45 @@ async function run() {
       }
     });
 
+    app.delete("/api/favorite", async (req, res) => {
+      try {
+        const { propertyId, tenantId } = req.body;
+
+        if (!propertyId || !tenantId) {
+          return res.status(400).send({
+            success: false,
+            message: "property id and tenant id is required",
+          });
+        }
+
+        // Delete the favorite belonging to this tenant and property
+        const result = await favoriteCollection.deleteOne({
+          propertyId,
+          tenantId,
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send({
+            success: false,
+            message: "Favorite property not found",
+          });
+        }
+
+        res.status(200).send({
+          success: true,
+          message: "Favorite removed successfully",
+        });
+      } catch (error) {
+        console.error("Error deleting favorite:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to remove favorite",
+          error: error.message,
+        });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(
