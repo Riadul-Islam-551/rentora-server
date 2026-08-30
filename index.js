@@ -40,28 +40,37 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/owner/property", async (req, res) => {
+    app.get("/api/property/owner", async (req, res) => {
       try {
-        const { owner, page = 1 } = req.query;
+        const { ownerId, page = 1 } = req.query;
 
-        const pageSize = 10;
-        const currentPage = Math.max(1, Number(page));
-        const skip = (currentPage - 1) * pageSize;
-
-        const query = {};
-
-        if (owner) {
-          query.ownerId = owner;
+        if (!ownerId) {
+          return res.status(400).send({
+            success: false,
+            message: "Owner ID is required",
+          });
         }
 
+        const pageSize = 10;
+
+        const currentPage = Math.max(1, Number(page) || 1);
+
+        const skip = (currentPage - 1) * pageSize;
+
+        const filter = {
+          ownerId,
+        };
+
         const properties = await propertyCollection
-          .find(query)
+          .find(filter)
           .sort({ _id: -1 })
           .skip(skip)
           .limit(pageSize)
           .toArray();
 
-        const totalProperties = await propertyCollection.countDocuments(query);
+        const totalProperties = await propertyCollection.countDocuments(filter);
+
+        const totalPages = Math.ceil(totalProperties / pageSize);
 
         res.status(200).send({
           success: true,
@@ -70,20 +79,20 @@ async function run() {
             currentPage,
             pageSize,
             totalProperties,
-            totalPages: Math.ceil(totalProperties / pageSize),
+            totalPages,
           },
         });
       } catch (error) {
-        console.error("Error fetching properties:", error);
+        console.error("Error fetching owner properties:", error);
 
         res.status(500).send({
           success: false,
-          message: "Failed to fetch properties",
+          message: "Failed to fetch owner properties",
           error: error.message,
         });
       }
     });
-
+    
     app.patch("/api/update/property", async (req, res) => {
       try {
         const { id, ...updateProperty } = req.body;
@@ -201,6 +210,7 @@ async function run() {
           search = "",
           propertyType = "",
           sortPrice = "",
+          status = "",
         } = req.query;
 
         const pageSize = 10;
@@ -210,26 +220,18 @@ async function run() {
 
         const filter = {};
 
-        const trimmedSearch = String(search).trim();
-        const trimmedPropertyType = String(propertyType).trim();
-
-        // Search title OR location
-        if (trimmedSearch) {
-          const escapedSearch = trimmedSearch.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&",
-          );
-
+        // Search
+        if (search.trim()) {
           filter.$or = [
             {
               title: {
-                $regex: escapedSearch,
+                $regex: search.trim(),
                 $options: "i",
               },
             },
             {
               location: {
-                $regex: escapedSearch,
+                $regex: search.trim(),
                 $options: "i",
               },
             },
@@ -237,14 +239,17 @@ async function run() {
         }
 
         // Property type
-        if (trimmedPropertyType) {
-          const escapedPropertyType = trimmedPropertyType.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&",
-          );
-
+        if (propertyType.trim()) {
           filter.propertyType = {
-            $regex: `^${escapedPropertyType}$`,
+            $regex: `^${propertyType.trim()}$`,
+            $options: "i",
+          };
+        }
+
+        // Status
+        if (status.trim()) {
+          filter.status = {
+            $regex: `^${status.trim()}$`,
             $options: "i",
           };
         }
@@ -253,11 +258,11 @@ async function run() {
         let sort = { _id: -1 };
 
         if (sortPrice === "asc") {
-          sort = { rent: 1, _id: -1 };
+          sort = { rent: 1 };
         }
 
         if (sortPrice === "desc") {
-          sort = { rent: -1, _id: -1 };
+          sort = { rent: -1 };
         }
 
         const properties = await propertyCollection
@@ -281,9 +286,10 @@ async function run() {
             totalPages,
           },
           filters: {
-            search: trimmedSearch,
-            propertyType: trimmedPropertyType,
+            search,
+            propertyType,
             sortPrice,
+            status,
           },
         });
       } catch (error) {
@@ -297,45 +303,6 @@ async function run() {
       }
     });
 
-    // app.get("/api/property", async (req, res) => {
-    //   try {
-    //     const { page = 1 } = req.query;
-
-    //     const pageSize = 10;
-    //     const currentPage = Math.max(1, Number(page));
-    //     const skip = (currentPage - 1) * pageSize;
-
-    //     const properties = await propertyCollection
-    //       .find()
-    //       .sort({ _id: -1 })
-    //       .skip(skip)
-    //       .limit(pageSize)
-    //       .toArray();
-
-    //     const totalProperties = await propertyCollection.countDocuments();
-
-    //     res.status(200).send({
-    //       success: true,
-    //       data: properties,
-    //       pagination: {
-    //         currentPage,
-    //         pageSize,
-    //         totalProperties,
-    //         totalPages: Math.ceil(totalProperties / pageSize),
-    //       },
-    //     });
-    //   } catch (error) {
-    //     console.error("Error fetching properties:", error);
-
-    //     res.status(500).send({
-    //       success: false,
-    //       message: "Failed to fetch properties",
-    //       error: error.message,
-    //     });
-    //   }
-    // });
-
-    // rejection apis
     app.post("/api/reject/property", async (req, res) => {
       try {
         const data = req.body;
