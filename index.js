@@ -577,6 +577,61 @@ async function run() {
       }
     });
 
+    app.get("/api/favorite", async (req, res) => {
+      try {
+        const { tenantId } = req.query;
+
+        if (!tenantId) {
+          return res.status(400).send({
+            success: false,
+            message: "Tenant ID is required",
+          });
+        }
+
+        // Get all favorites belonging to this tenant
+        const favorites = await favoriteCollection
+          .find({ tenantId })
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        if (favorites.length === 0) {
+          return res.status(200).send({
+            success: true,
+            data: [],
+            totalFavorites: 0,
+          });
+        }
+
+        // Get property IDs from favorites
+        const propertyIds = favorites.map(
+          (favorite) => new ObjectId(favorite.propertyId),
+        );
+
+        // Get the actual properties
+        const properties = await propertyCollection
+          .find({
+            _id: {
+              $in: propertyIds,
+            },
+          })
+          .toArray();
+
+        res.status(200).send({
+          success: true,
+          data: properties,
+          totalFavorites: properties.length,
+        });
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+
+        res.status(500).send({
+          success: false,
+          message: "Failed to fetch favorite properties",
+          error: error.message,
+        });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(
